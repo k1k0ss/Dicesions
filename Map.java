@@ -8,14 +8,18 @@ import java.util.*;
 public class Map extends Applet implements ActionListener
 {
     private JFrame game;
-    private MyMap paint;
+    private DrawMap paint;
     private JButton shop, dicebutton;
-    private ArrayList <Player> players; //keep the players in order of playing
+    protected ArrayList <Player> players; //keep the players in order of playing
     private int[] order; //keep the results to decide order of play
     private int rounds = 0; //keep the round to remember whose turn is
     private int order_rounds = 1; //keep the rounds that are necessary to decide order
     private NodeDice node_dice = new NodeDice();
     private int movement; // variable to keep dice result and decide the correct move on the map
+    private String prevNode,command;
+    private Decision decide;
+    private Buff boost;
+    
     
     //create the map window
     public Map(ArrayList<Player> p)
@@ -41,7 +45,7 @@ public class Map extends Applet implements ActionListener
         
         players = p;
         order = new int[players.size()];
-        paint = new MyMap(players);
+        paint = new DrawMap(players);
         
         game.add(shop);
         game.add(dicebutton);
@@ -62,6 +66,7 @@ public class Map extends Applet implements ActionListener
         
     }
     
+        
     public void actionPerformed(ActionEvent e) {
         if ( rounds == 0 )
         {
@@ -105,16 +110,81 @@ public class Map extends Applet implements ActionListener
         else
         {
             movement();
+           
         }
     }
     
     //method to make the players move based on dice result
     public void movement(){
-        ArrayList<String> moves = new ArrayList<String>();
+        ArrayList<String> moves = new ArrayList<String>(); //keep possible moves
         String move_choice;
+        
+        
         int x = players.get(rounds - 1).getPosX();
         int y = players.get(rounds - 1).getPosY();
         
+        moves = getPossibleMoves(x,y);        
+        movement = node_dice.roll();
+        System.out.println(movement); 
+        
+        ImageIcon image = new ImageIcon(getClass().getResource("result"+movement+".png"));
+        dicebutton.setIcon(image);
+        
+        if( moves.size() == 2)
+        {
+            if (movement == 1 || movement == 2 || movement == 3)
+            {
+                move_choice = moves.get(0);
+            }
+            else
+            {
+                move_choice = moves.get(1);
+            }
+        }
+        else if( moves.size() == 3)
+        {
+            if(movement == 1 || movement == 2)
+            {
+                move_choice = moves.get(0);
+            }
+            else if(movement == 3 || movement == 4)
+            {
+                move_choice = moves.get(1);
+            }
+            else
+            {
+                move_choice = moves.get(2);
+            }
+        }
+        else
+        {
+            if(movement == 1 || movement == 2)
+            {
+                move_choice = moves.get(0);
+            }
+            else if(movement == 3)
+            {
+                move_choice = moves.get(1);
+            }
+            else if(movement == 4)
+            {
+                move_choice = moves.get(2);
+            }
+            else
+            {
+                move_choice = moves.get(3);
+            }
+        }
+        
+        informPlayerPos(move_choice,x,y);
+        
+        checkNode();
+        
+        rounds = (rounds%players.size()) + 1;
+    }
+    
+    public ArrayList<String> getPossibleMoves(int x, int y){
+        ArrayList<String> moves = new ArrayList<String>();
         
         if( x==1 && y==1 )
         {
@@ -168,81 +238,74 @@ public class Map extends Applet implements ActionListener
             moves.add("RIGHT");
         }
         
-        movement = node_dice.roll();
-        System.out.println(movement);        
-        ImageIcon image = new ImageIcon(getClass().getResource("result"+movement+".png"));
-        dicebutton.setIcon(image);
+        return moves;
+    }
+    
+    public void informPlayerPos(String s, int x, int y){
+        switch (s) {
+            case "LEFT":
+                players.get(rounds - 1).setPlayerPosition(x-1,y);
+                prevNode = paint.getTypeOfNode(x-1,y); //get the type of Node, the player is going to move
+                break;
+            case "DOWN":
+                players.get(rounds - 1).setPlayerPosition(x,y+1);
+                prevNode = paint.getTypeOfNode(x,y+1);
+                break;
+            case "RIGHT":
+                players.get(rounds - 1).setPlayerPosition(x+1,y);
+                prevNode = paint.getTypeOfNode(x+1,y);
+                break;
+            case "UP":
+                players.get(rounds - 1).setPlayerPosition(x,y-1);
+                prevNode = paint.getTypeOfNode(x,y-1);
+                break;
+     }
+     System.out.println(prevNode);
         
-        if( moves.size() == 2)
+     game.getContentPane().removeAll();
+        
+     game.add(shop);
+     game.add(dicebutton);
+     game.add(paint=new DrawMap(players));
+
+     game.setVisible(true);
+    }
+    
+    public void checkNode(){
+        
+        if(prevNode == "C")
         {
-            if (movement == 1 || movement == 2 || movement == 3)
-            {
-                move_choice = moves.get(0);
-            }
-            else
-            {
-                move_choice = moves.get(1);
-            }
         }
-        else if( moves.size() == 3)
+        else if(prevNode == "D")
         {
-            if(movement == 1 || movement == 2)
+
+           decide = new Decision(players.get(rounds - 1), getPossibleMoves(players.get(rounds - 1).getPosX(), players.get(rounds - 1).getPosY()));
+
+           if(!decide.getCommand().equals(""))
+           {
+            System.out.println("here we are!!");
+            players.get(rounds - 1).increaseCoins();
+            players.get(rounds - 1).showStats();
+            informPlayerPos(decide.getCommand(), players.get(rounds - 1).getPosX(), players.get(rounds - 1).getPosY());
+            checkNode();           
+           }
+          
+        } 
+        else if(prevNode == "B")
+        {
+            //CatalogBuff.showBuffs();
+            boost = new Buff();
+            if(boost.getElement() != null)
             {
-                move_choice = moves.get(0);
-            }
-            else if(movement == 3 || movement == 4)
-            {
-                move_choice = moves.get(1);
-            }
-            else
-            {
-                move_choice = moves.get(2);
+                System.out.println(boost.getElement().getName());
+                System.out.println(players.get(rounds - 1 ).player_name);
+                players.get(rounds - 1).increaseStat(boost.getElement());
+                players.get(rounds - 1).showStats();
             }
         }
         else
         {
-            if(movement == 1 || movement == 2)
-            {
-                move_choice = moves.get(0);
-            }
-            else if(movement == 3)
-            {
-                move_choice = moves.get(1);
-            }
-            else if(movement == 4)
-            {
-                move_choice = moves.get(2);
-            }
-            else
-            {
-                move_choice = moves.get(3);
-            }
         }
-        
-        switch (move_choice) {
-            case "LEFT":
-                players.get(rounds - 1).setPlayerPosition(x-1,y);
-                break;
-            case "DOWN":
-                players.get(rounds - 1).setPlayerPosition(x,y+1);
-                break;
-            case "RIGHT":
-                players.get(rounds - 1).setPlayerPosition(x+1,y);
-                break;
-            case "UP":
-                players.get(rounds - 1).setPlayerPosition(x,y-1);
-                break;
-        }
-        rounds = (rounds%players.size()) + 1;
-        System.out.println(rounds);
-        game.getContentPane().removeAll();
-        
-        game.add(shop);
-        game.add(dicebutton);
-        game.add(paint=new MyMap(players));
+      }
 
-        game.setVisible(true);
     }
-        
-
-}
