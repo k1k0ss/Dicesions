@@ -78,8 +78,6 @@ public class Shop extends JFrame implements ActionListener
                     {
                      while(!Objects.isNull(need))
                      {
-                    
-                        System.out.println(Objects.isNull(need));
                         elements[count] = new JButton(need.getName());
                         elements[count].setForeground(Color.BLACK);
                         elements[count].setBackground(Color.GRAY);
